@@ -2,7 +2,8 @@ import hashlib
 import inspect
 from typing import Dict
 
-from prefect import Parameter, Task
+from prefect import Parameter
+from prefect import Task
 from prefect.engine import TaskRunner
 from prefect.engine.result import Result
 from prefect.engine.state import State
@@ -30,7 +31,7 @@ class CachedTaskRunner(TaskRunner):
             result = Result(value=result)
         serializer = getattr(result, "serializer", self.result.serializer)
         serialized = serializer.serialize(result.value)
-        hash = hashlib.md5(serialized).hexdigest()
+        hash = hashlib.md5(serialized).hexdigest()  # noqa: S303
         return {
             "md5": hash,
             "size": len(serialized),

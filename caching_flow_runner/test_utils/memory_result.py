@@ -7,10 +7,10 @@ from prefect.engine.serializers import Serializer
 
 class MemoryResult(Result):
     def __init__(
-            self,
-            value: Any = None,
-            location: str = None,
-            serializer: Serializer = None,
+        self,
+        value: Any = None,
+        location: str = None,
+        serializer: Serializer = None,
     ):
         super().__init__(value=value, location=location, serializer=serializer)
         self.fs = fsspec.filesystem("memory")

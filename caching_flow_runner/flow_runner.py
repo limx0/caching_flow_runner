@@ -4,7 +4,8 @@ from prefect.engine import FlowRunner
 from prefect.engine.state import State
 
 from caching_flow_runner.hash_storage import HashStorage
-from caching_flow_runner.task_runner import CachedTaskRunner, task_qualified_name
+from caching_flow_runner.task_runner import CachedTaskRunner
+from caching_flow_runner.task_runner import task_qualified_name
 
 
 class CachedFlowRunner(FlowRunner):
@@ -26,9 +27,7 @@ class CachedFlowRunner(FlowRunner):
         self.hash_storage.save_multiple(data=lock)
 
     def get_flow_run_state(self, *args, **kwargs) -> State:
-        self.determine_initial_task_states(
-            task_states=kwargs.get("task_states")
-        )
+        self.determine_initial_task_states(task_states=kwargs.get("task_states"))
         # kwargs["task_states"] = cached_task_states
         state = super().get_flow_run_state(*args, **kwargs)
         self.save_lock()

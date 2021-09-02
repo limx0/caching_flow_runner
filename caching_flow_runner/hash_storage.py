@@ -9,7 +9,7 @@ class HashStorage:
     def __init__(self, url_path):
         self.url_path = url_path
         self.options = infer_storage_options(urlpath=url_path)
-        self.fs = fsspec.filesystem(self.options['protocol'])
+        self.fs = fsspec.filesystem(self.options["protocol"])
 
     def merge(self, key: str, values: Dict) -> Dict:
         merged = self.load(key=key)
@@ -28,12 +28,12 @@ class HashStorage:
 
     def save(self, key, values):
         data = self.merge(key, values)
-        with self.fs.open(f"{self.url_path}/{key}.json", 'wb') as f:
+        with self.fs.open(f"{self.url_path}/{key}.json", "wb") as f:
             return f.write(json.dumps(data).encode())
 
     def load(self, key) -> Dict:
         try:
-            with self.fs.open(f"{self.url_path}/{key}.json", 'rb') as f:
+            with self.fs.open(f"{self.url_path}/{key}.json", "rb") as f:
                 return json.loads(f.read())
         except FileNotFoundError:
             return {}

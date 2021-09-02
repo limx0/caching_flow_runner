@@ -38,5 +38,4 @@ class TestCachedFlowRunner:
 
         self.runner_cls.LOCK = {}
 
-
         self.flow.run(p=1, runner_cls=self.runner_cls)
