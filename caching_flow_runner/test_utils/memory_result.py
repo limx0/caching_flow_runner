@@ -16,8 +16,13 @@ class MemoryResult(Result):
         self.fs = fsspec.filesystem("memory")
 
     def read(self, location: str) -> "Result":
+        new = self.copy()
+        new.location = location
+
         with self.fs.open(location, "rb") as f:
-            return f.read()
+            serialized = f.read()
+        new.value = self.serializer.deserialize(serialized)
+        return new
 
     def write(self, value_: Any, **kwargs: Any) -> "Result":
         new = self.format(**kwargs)

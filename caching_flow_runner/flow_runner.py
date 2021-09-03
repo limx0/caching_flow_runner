@@ -1,10 +1,11 @@
-from typing import Dict, Optional
-
+from prefect import Parameter
 from prefect.engine import FlowRunner
 from prefect.engine.state import State
 
 from caching_flow_runner.hash_storage import HashStorage
 from caching_flow_runner.task_runner import CachedTaskRunner
+from caching_flow_runner.task_runner import get_lock
+from caching_flow_runner.task_runner import set_lock
 from caching_flow_runner.task_runner import task_qualified_name
 
 
@@ -13,22 +14,19 @@ class CachedFlowRunner(FlowRunner):
         super().__init__(*args, task_runner_cls=CachedTaskRunner, **kwargs)
         self.hash_storage = hash_storage
 
-    def determine_initial_task_states(self, task_states: Optional[Dict]):
+    def set_locks_for_flow_run(self):
         for task in self.flow.sorted_tasks():
-            lock = self.hash_storage.load(key=task_qualified_name(task))
-            if not lock:
-                continue
-            print(lock)
+            name = task_qualified_name(task)
+            lock = self.hash_storage.load(key=name)
+            if not isinstance(task, Parameter):
+                set_lock(name, lock)
 
-        return task_states
-
-    def save_lock(self):
-        lock = self.task_runner_cls.LOCK
+    def record_locks_post_run(self):
+        lock = get_lock()
         self.hash_storage.save_multiple(data=lock)
 
     def get_flow_run_state(self, *args, **kwargs) -> State:
-        self.determine_initial_task_states(task_states=kwargs.get("task_states"))
-        # kwargs["task_states"] = cached_task_states
+        self.set_locks_for_flow_run()
         state = super().get_flow_run_state(*args, **kwargs)
-        self.save_lock()
+        self.record_locks_post_run()
         return state
