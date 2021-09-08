@@ -31,14 +31,14 @@ def looping_task(n):
     value = loop_payload.get("value", 1)
 
     if "task_loop_result" not in prefect.context:
-        raise LOOP(message="Looper-0", result=None)
+        raise LOOP(message="Looper-0", result=0)
 
-    new_value = inc(value)
+    new_value = inc.run(value)
 
     if new_value > n:
         return value
 
-    raise LOOP(message=f"Looper-{value}", result=dict(value=new_value))
+    raise LOOP(message=f"Looper-{value}", result=new_value)
 
 
 with Flow("test") as test_flow:

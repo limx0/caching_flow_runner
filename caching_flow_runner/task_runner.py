@@ -12,6 +12,7 @@ from prefect.engine.state import Cached
 from prefect.engine.state import Looped
 from prefect.engine.state import State
 from prefect.engine.state import Success
+from prefect.utilities.executors import tail_recursive
 
 
 LOCK = {}
@@ -64,9 +65,12 @@ class CachedTaskRunner(TaskRunner):
     def _should_track(self):
         return not isinstance(self.task, Parameter)
 
+    def _loop_task_name(self, message: str):
+        return f"{self.task_full_name}-{message}"
+
     def _hash_source(self):
+        """Hash source code for run function, stripping away @task decorator"""
         source = inspect.getsource(self.task.run)
-        # Strip task decorator
         if source.startswith("@task"):
             source = source.split("\n", maxsplit=1)[1]
         assert source.startswith(
@@ -97,18 +101,24 @@ class CachedTaskRunner(TaskRunner):
         set_lock(self.task_full_name, task_lock)
         return new_state
 
-    def _on_looped(self, state: Looped):
-        self.context["task_loop_message"] = state.message
-        return state
+    # def _on_looped(self, state: Looped):
+    #     """ We've completed a LOOP task, persist the result and lock file """
+    #     task_lock = self._generate_task_lock(state=state)
+    #     set_lock(self._loop_task_name(message=state.message), task_lock)
+    #     return state
 
     def _on_state_change(self, _, old_state: State, new_state: State) -> State:
         if self._should_track():
             if isinstance(new_state, Success):
                 return self._on_success(new_state=new_state)
             elif isinstance(new_state, Looped):
-                return self._on_looped(state=new_state)
+                self.context.update(task_loop_message=new_state.message)
 
         return new_state
+
+    def _persist_loop_result(self, state: Looped, result: Any):
+        with prefect.context(task_hash_name=f"{self.task_full_name}-{state.message}"):
+            self.result.write(result, **prefect.context)
 
     def get_task_inputs(self, *args, **kwargs) -> Dict[str, Result]:
         task_inputs = super().get_task_inputs(*args, **kwargs)
@@ -123,7 +133,8 @@ class CachedTaskRunner(TaskRunner):
         result = super().cache_result(state=state, inputs=inputs)
         if isinstance(state, Looped):
             lock = self._generate_task_lock(state=state)
-            set_lock(f"{self.task_full_name}-{state.message}", lock)
+            set_lock(self._loop_task_name(message=state.message), lock)
+            self._persist_loop_result(state=state, result=result.result)
         return result
 
     def check_target(self, state: State, inputs: Dict[str, Result]) -> State:
@@ -147,6 +158,11 @@ class CachedTaskRunner(TaskRunner):
                 return state
 
         return new_state
+
+    @tail_recursive
+    def run(self, *args, **kwargs) -> State:
+        with prefect.context(task_hash_name=self.task_full_name):
+            return super().run(*args, **kwargs)
 
 
 class SourceSerializer(Serializer):

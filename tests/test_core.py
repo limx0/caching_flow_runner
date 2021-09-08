@@ -75,6 +75,7 @@ class TestCachedFlowRunner:
     def test_mapping_task(self):
         raise NotImplementedError
 
+    # @mock.patch("caching_flow_runner.test_utils.memory_result.MemoryResult.read")
     def test_looping_task(self):
         # Arrange
         with Flow("loop_flow") as flow:
