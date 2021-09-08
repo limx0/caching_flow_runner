@@ -6,6 +6,21 @@ Uses a `CachedFlowRunner` and `CachedTaskRunner` to
 record input and output hashes for all tasks that run, overriding `TaskRunner.check_target` to also check for matching
 hashes.
 
+### Install
+```shell
+pip install git+https://github.com/limx0/caching_flow_runner.git
+```
+
+### Usage
+```python
+from caching_flow_runner.flow_runner import CachedFlowRunner
+
+# Create flow as normal
+flow = MyFlow(...) 
+
+# Run with CachedFlowRunner
+flow.run(runner_cls=CachedFlowRunner)
+```
+
 ### To do:
-- Persist flow lock for faster repeated runs
-- Implement skip loading upstream from cache if a task is cache valid.
+- Implement flow trimming when tasks are cached.

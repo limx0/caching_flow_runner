@@ -1,6 +1,8 @@
 from functools import partial
 
 import cloudpickle
+from prefect import Flow
+from prefect import Parameter
 from prefect.engine.state import Cached
 from prefect.engine.state import Success
 
@@ -9,12 +11,14 @@ from caching_flow_runner.hash_storage import HashStorage
 from caching_flow_runner.task_runner import clear_lock
 from caching_flow_runner.task_runner import get_lock
 from caching_flow_runner.test_utils.locks import task_lock_instance
-from caching_flow_runner.test_utils.tasks import flow
+from caching_flow_runner.test_utils.tasks import inc
+from caching_flow_runner.test_utils.tasks import looping_task
+from caching_flow_runner.test_utils.tasks import test_flow
 
 
 class TestCachedFlowRunner:
     def setup(self):
-        self.flow = flow
+        self.flow = test_flow
         self.hash_storage = HashStorage("memory://")
         self.runner_cls = partial(CachedFlowRunner, hash_storage=self.hash_storage)
         clear_lock()
@@ -65,3 +69,16 @@ class TestCachedFlowRunner:
         result = {task.name: state for task, state in states.result.items()}
         assert isinstance(result["get"], Cached)
         assert isinstance(result["inc"], Success)
+
+    def test_looping_task(self):
+        # Arrange
+        with Flow("loop_flow") as flow:
+            n = Parameter("n")
+            loop = looping_task(n=n)
+            inc(loop)
+        flow.run(n=3, runner_cls=self.runner_cls)
+
+        # Act
+        flow.run(n=5, runner_cls=self.runner_cls)
+
+        # Assert

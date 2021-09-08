@@ -35,4 +35,6 @@ class MemoryResult(Result):
         return new
 
     def exists(self, location: str, **kwargs: Any) -> bool:
+        if "task_hash_name" not in kwargs:
+            return False
         return self.fs.exists(location.format(**kwargs))
