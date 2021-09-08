@@ -97,6 +97,7 @@ class CachedTaskRunner(TaskRunner):
         }
 
     def _on_success(self, new_state):
+        self.logger.info(f"Setting task lock for {self.task_full_name} based on {new_state}")
         task_lock = self._generate_task_lock(state=new_state)
         set_lock(self.task_full_name, task_lock)
         return new_state
@@ -108,16 +109,19 @@ class CachedTaskRunner(TaskRunner):
     #     return state
 
     def _on_state_change(self, _, old_state: State, new_state: State) -> State:
+        self.logger.info(f"{old_state=} {new_state=}")
         if self._should_track():
             if isinstance(new_state, Success):
                 return self._on_success(new_state=new_state)
             elif isinstance(new_state, Looped):
+                self.logger.info(f"Setting task_loop_message={new_state.message}")
                 self.context.update(task_loop_message=new_state.message)
 
         return new_state
 
     def _persist_loop_result(self, state: Looped, result: Any):
         with prefect.context(task_hash_name=f"{self.task_full_name}-{state.message}"):
+            self.logger.info(f"Writing loop result {result}")
             self.result.write(result, **prefect.context)
 
     def get_task_inputs(self, *args, **kwargs) -> Dict[str, Result]:
@@ -129,20 +133,19 @@ class CachedTaskRunner(TaskRunner):
             set_lock(self.task_full_name, lock)
         return task_inputs
 
-    def cache_result(self, state: State, inputs: Dict[str, Result]) -> State:
-        result = super().cache_result(state=state, inputs=inputs)
-        if isinstance(state, Looped):
-            lock = self._generate_task_lock(state=state)
-            set_lock(self._loop_task_name(message=state.message), lock)
-            self._persist_loop_result(state=state, result=result.result)
-        return result
+    # def cache_result(self, state: State, inputs: Dict[str, Result]) -> State:
+    #     result = super().cache_result(state=state, inputs=inputs)
+    #     if isinstance(state, Looped):
+    #         lock = self._generate_task_lock(state=state)
+    #         set_lock(self._loop_task_name(message=state.message), lock)
+    #         self._persist_loop_result(state=state, result=result.result)
+    #     return result
 
     def check_target(self, state: State, inputs: Dict[str, Result]) -> State:
         """Overloaded purely to inject task_hash_name when reading from target"""
         if self.context.get("task_loop_message") is not None:
-            with prefect.context(
-                task_hash_name=f"{self.task_full_name}-{self.context['task_loop_message']}"
-            ):
+            fn = f"{self.task_full_name}-{self.context['task_loop_message']}"
+            with prefect.context(task_hash_name=fn):
                 return super().check_target(state=state, inputs=inputs)
 
         with prefect.context(task_hash_name=self.task_full_name):
