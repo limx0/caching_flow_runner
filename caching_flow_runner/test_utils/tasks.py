@@ -27,18 +27,18 @@ def multiply(c):
 
 @task(result=memory_result, checkpoint=True, target="{task_hash_name}.pkl")
 def looping_task(n):
-
-    if "task_loop_result" not in prefect.context:
-        raise LOOP(message="Looper-0", result=dict(value=1))
-
     loop_payload = prefect.context.get("task_loop_result", {})
-
     value = loop_payload.get("value", 1)
 
-    if value > n:
+    if "task_loop_result" not in prefect.context:
+        raise LOOP(message="Looper-0", result=None)
+
+    new_value = inc(value)
+
+    if new_value > n:
         return value
 
-    raise LOOP(message=f"Looper-{value}", result=dict(value=value + 1))
+    raise LOOP(message=f"Looper-{value}", result=dict(value=new_value))
 
 
 with Flow("test") as test_flow:

@@ -1,6 +1,7 @@
 from functools import partial
 
 import cloudpickle
+import pytest
 from prefect import Flow
 from prefect import Parameter
 from prefect.engine.state import Cached
@@ -70,12 +71,17 @@ class TestCachedFlowRunner:
         assert isinstance(result["get"], Cached)
         assert isinstance(result["inc"], Success)
 
+    @pytest.mark.skip(reason="Not implemented")
+    def test_mapping_task(self):
+        raise NotImplementedError
+
     def test_looping_task(self):
         # Arrange
         with Flow("loop_flow") as flow:
             n = Parameter("n")
             loop = looping_task(n=n)
             inc(loop)
+
         flow.run(n=3, runner_cls=self.runner_cls)
 
         # Act

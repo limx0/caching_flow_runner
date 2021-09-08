@@ -98,6 +98,7 @@ class CachedTaskRunner(TaskRunner):
         return new_state
 
     def _on_looped(self, state: Looped):
+        self.context["task_loop_message"] = state.message
         return state
 
     def _on_state_change(self, _, old_state: State, new_state: State) -> State:
@@ -127,6 +128,12 @@ class CachedTaskRunner(TaskRunner):
 
     def check_target(self, state: State, inputs: Dict[str, Result]) -> State:
         """Overloaded purely to inject task_hash_name when reading from target"""
+        if self.context.get("task_loop_message") is not None:
+            with prefect.context(
+                task_hash_name=f"{self.task_full_name}-{self.context['task_loop_message']}"
+            ):
+                return super().check_target(state=state, inputs=inputs)
+
         with prefect.context(task_hash_name=self.task_full_name):
             return super().check_target(state=state, inputs=inputs)
 

@@ -23,4 +23,6 @@ flow.run(runner_cls=CachedFlowRunner)
 ```
 
 ### To do:
-- Implement flow trimming when tasks are cached.
+- [ ] Test mapping tasks
+- [ ] Test looping tasks
+- [ ] Implement flow trimming when tasks are cached
