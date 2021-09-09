@@ -8,7 +8,7 @@ from prefect.engine.state import Cached
 from prefect.engine.state import Success
 
 from caching_flow_runner.flow_runner import CachedFlowRunner
-from caching_flow_runner.hash_storage import HashStorage
+from caching_flow_runner.lock_storage import LockStore
 from caching_flow_runner.task_runner import clear_lock
 from caching_flow_runner.task_runner import get_lock
 from caching_flow_runner.test_utils.locks import task_lock_instance
@@ -24,8 +24,8 @@ class TestCachedFlowRunner:
         self.flow = test_flow
         self.fs = get_fs()
         self.clear_fs()
-        self.hash_storage = HashStorage("memory://")
-        self.runner_cls = partial(CachedFlowRunner, hash_storage=self.hash_storage)
+        self.lock_store = LockStore("memory://")
+        self.runner_cls = partial(CachedFlowRunner, lock_store=self.lock_store)
         clear_lock()
 
     def clear_fs(self):
@@ -33,7 +33,7 @@ class TestCachedFlowRunner:
             self.fs.rm(f)
 
     def _serialize_to_cache(self, fn, value):
-        with self.hash_storage.fs.open(fn, "wb") as f:
+        with self.lock_store.fs.open(fn, "wb") as f:
             serialized = cloudpickle.dumps(value)
             f.write(serialized)
 
@@ -81,7 +81,7 @@ class TestCachedFlowRunner:
 
     def test_previous_flow_run_caches_correctly(self):
         # Arrange - pre cache data
-        self.hash_storage.save_multiple(data=task_lock_instance.copy())
+        self.lock_store.save_multiple(data=task_lock_instance.copy())
         self._serialize_to_cache(
             "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
         )
@@ -99,7 +99,7 @@ class TestCachedFlowRunner:
 
     def test_task_recomputes_when_when_hash_changes(self):
         # Arrange
-        self.hash_storage.save_multiple(data=task_lock_instance.copy())
+        self.lock_store.save_multiple(data=task_lock_instance.copy())
         self._serialize_to_cache(
             "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
         )
@@ -108,9 +108,9 @@ class TestCachedFlowRunner:
         )
 
         # Act
-        inc_lock = self.hash_storage.load("caching_flow_runner.test_utils.tasks.inc")
+        inc_lock = self.lock_store.load("caching_flow_runner.test_utils.tasks.inc")
         inc_lock["inputs"]["b"]["md5"] = "111"
-        self.hash_storage.save(key="caching_flow_runner.test_utils.tasks.inc", values=inc_lock)
+        self.lock_store.save(key="caching_flow_runner.test_utils.tasks.inc", values=inc_lock)
 
         states = self.flow.run(p=1, runner_cls=self.runner_cls)
 

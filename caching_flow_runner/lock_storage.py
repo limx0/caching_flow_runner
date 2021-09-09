@@ -5,7 +5,7 @@ import fsspec
 from fsspec.utils import infer_storage_options
 
 
-class HashStorage:
+class LockStore:
     def __init__(self, url_path):
         self.url_path = url_path
         self.options = infer_storage_options(urlpath=url_path)
