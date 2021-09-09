@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Any
 
@@ -9,7 +10,7 @@ from prefect.engine.serializers import Serializer
 
 @lru_cache(1)
 def get_fs():
-    return fsspec.filesystem("file")
+    return fsspec.filesystem(os.environ.get("FS_URL", "memory"))
 
 
 class MemoryResult(Result):
