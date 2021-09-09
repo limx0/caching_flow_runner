@@ -16,7 +16,8 @@ jobs:
         os: [ ubuntu-latest ]
         python-version: [ 3.9 ]
     env:
-      FS_URL: "file:///home/runner/work/data"
+      FS_PATH: "/opt/data"
+      FS_PROTOCOL: "file"
     name: test - Python ${{ matrix.python-version }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
 
@@ -31,25 +32,25 @@ jobs:
 
       # Create data directory
       - name: Create data directory
-        run: mkdir /home/runner/work/data
+        run: mkdir $FS_PATH
 
       # Install build dependencies
       - name: Install build dependencies
         run: python -m pip install --upgrade pip setuptools wheel poetry nox
 
-      # Setup Poetry caching
-      - name: Get Poetry cache dir
-        id: poetry-cache
-        run: echo "::set-output name=dir::$(poetry config cache-dir)"
-
-      - name: Poetry/Nox cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.poetry-cache.outputs.dir }}
-          key: ${{ runner.os }}-${{ matrix.python-version }}-poetry-test-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.python-version }}-poetry-test-
-            ${{ runner.os }}-${{ matrix.python-version }}-poetry-
+#      # Setup Poetry caching
+#      - name: Get Poetry cache dir
+#        id: poetry-cache
+#        run: echo "::set-output name=dir::$(poetry config cache-dir)"
+#
+#      - name: Poetry/Nox cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ steps.poetry-cache.outputs.dir }}
+#          key: ${{ runner.os }}-${{ matrix.python-version }}-poetry-test-${{ hashFiles('**/poetry.lock') }}
+#          restore-keys: |
+#            ${{ runner.os }}-${{ matrix.python-version }}-poetry-test-
+#            ${{ runner.os }}-${{ matrix.python-version }}-poetry-
 
       # Install build dependencies
       - name: Install build dependencies
@@ -57,4 +58,4 @@ jobs:
 
       # Run tests
       - name: Run tests
-        run: poetry run pytest tests
+        run: poetry run pytest tests -m "not local"

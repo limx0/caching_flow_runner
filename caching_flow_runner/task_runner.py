@@ -30,7 +30,7 @@ def task_hashed_filename(**kwargs) -> str:
     folder = ""
     if kwargs.get("task_loop_state") is not None:
         folder = f"{kwargs['task_loop_state']}/"
-    fn = f"/{task_name}/{folder}{key}.pkl"
+    fn = f"{task_name}/{folder}{key}.pkl"
     return fn
 
 
@@ -114,7 +114,7 @@ class CachedTaskRunner(TaskRunner):
         if self._should_track():
             lock = get_lock(self.task_full_name)
             lock["raw_inputs"] = task_inputs
-            lock["loop_inputs"] = kwargs.get("state").result
+            # lock["loop_inputs"] = kwargs.get("state").result
             set_lock(self.task_full_name, lock)
         return task_inputs
 
