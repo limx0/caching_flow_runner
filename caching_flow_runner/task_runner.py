@@ -40,18 +40,21 @@ def task_qualified_name(task: Task):
 
 
 def task_hashed_filename(**kwargs) -> str:
+    # TODO Add a fs prefix - don't just use /
     task_name = kwargs["task_hash_name"]
     lock = get_lock(key=task_name)
     key = tokenize(**{k: v.value for k, v in lock["raw_inputs"].items()})
-    return f"/{task_name}/{key}.pkl"
+    folder = ""
+    if kwargs.get("task_loop_state") is not None:
+        folder = f"{kwargs['task_loop_state']}/"
+    fn = f"/{task_name}/{folder}{key}.pkl"
+    return fn
 
 
 def _hash_result(result: Any, serializer: Serializer) -> Dict:
     serialized = serializer.serialize(result)
-    hash = tokenize(result)
-    # hash = hashlib.md5(serialized).hexdigest()  # noqa: S303
-
-    return {"hash": hash, "size": len(serialized)}
+    token = tokenize(result)
+    return {"hash": token, "size": len(serialized)}
 
 
 def _compare_input_hashes(inputs: Dict, lock: Dict):
@@ -153,15 +156,10 @@ class CachedTaskRunner(TaskRunner):
     #         self._persist_loop_result(state=state, result=result.result)
     #     return result
 
-    def check_target(self, state: State, inputs: Dict[str, Result]) -> State:
-        """Overloaded purely to inject task_hash_name when reading from target"""
-        if self.context.get("task_loop_message") is not None:
-            fn = f"{self.task_full_name}-{self.context['task_loop_message']}"
-            with prefect.context(task_hash_name=fn):
-                return super().check_target(state=state, inputs=inputs)
-
-        with prefect.context(task_hash_name=self.task_full_name, task_loop_count=None):
-            return super().check_target(state=state, inputs=inputs)
+    # def check_target(self, state: State, inputs: Dict[str, Result]) -> State:
+    #     """Overloaded purely to inject task_hash_name when reading from target"""
+    #     with prefect.context(task_hash_name=self.task_full_name, task_loop_count=None):
+    #         return super().check_target(state=state, inputs=inputs)
 
     def check_task_is_cached(self, state: State, inputs: Dict[str, Result]) -> State:
         new_state = super().check_task_is_cached(state=state, inputs=inputs)
@@ -182,6 +180,13 @@ class CachedTaskRunner(TaskRunner):
     def run(self, *args, **kwargs) -> State:
         with prefect.context(task_hash_name=self.task_full_name):
             return super().run(*args, **kwargs)
+
+    def check_task_is_looping(self, *args, **kwargs) -> State:
+        if isinstance(args[0], Looped):
+            state: Looped = args[0]
+            kwargs["context"].update(task_loop_state=state.result)
+        new_state = super().check_task_is_looping(*args, **kwargs)
+        return new_state
 
 
 class SourceSerializer(Serializer):

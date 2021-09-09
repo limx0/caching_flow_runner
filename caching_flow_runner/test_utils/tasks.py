@@ -26,7 +26,7 @@ def multiply(c):
     return c * 2
 
 
-@task(result=memory_result, checkpoint=True, target="{task_hash_name}.pkl")
+@task(result=memory_result, checkpoint=True, target=task_hashed_filename)
 def looping_task(n):
     logger = prefect.context["logger"]
     logger.info("\n")

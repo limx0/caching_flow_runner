@@ -138,6 +138,6 @@ class TestCachedFlowRunner:
 
         flow.logger.info("\n\n")
 
-        flow.run(n=5, runner_cls=self.runner_cls)
+        flow.run(n=3, runner_cls=self.runner_cls)
 
         # Assert
