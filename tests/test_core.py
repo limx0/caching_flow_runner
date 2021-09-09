@@ -1,3 +1,4 @@
+import os
 from functools import partial
 
 import cloudpickle
@@ -9,6 +10,7 @@ from prefect.engine.state import Success
 
 from caching_flow_runner.flow_runner import CachedFlowRunner
 from caching_flow_runner.lock_storage import LockStore
+from caching_flow_runner.lock_storage import check_parent_exists
 from caching_flow_runner.lock_storage import clear_lock
 from caching_flow_runner.lock_storage import set_lock
 from caching_flow_runner.task_runner import get_lock
@@ -22,19 +24,28 @@ from caching_flow_runner.test_utils.tasks import test_flow
 
 class TestCachedFlowRunner:
     def setup(self):
+        self.fs_url = os.environ.get("FS_URL", "memory:///")
         self.flow = test_flow
-        self.fs = get_fs()
-        self.clear_fs()
-        self.lock_store = LockStore("memory://")
+        self.fs, self.root = get_fs(self.fs_url)
+        self.lock_store = LockStore(self.fs_url)
         self.runner_cls = partial(CachedFlowRunner, lock_store=self.lock_store)
+        self._clear_fs()
         clear_lock()
 
-    def clear_fs(self):
-        for f in self.fs.glob("**/*"):
-            self.fs.rm(f)
+    def _clear_fs(self):
+        try:
+            self.fs.rm(f"{self.root}", recursive=True)
+        except FileNotFoundError:
+            pass
+        self.fs.mkdir(self.root)
 
-    def _serialize_to_cache(self, fn, value):
-        with self.lock_store.fs.open(fn, "wb") as f:
+    def _ls(self):
+        return self.fs.glob(f"{self.root}/**/*")
+
+    def _serialize_to_cache(self, path, value):
+        fn = f"{self.root}{path}"
+        check_parent_exists(fs=self.fs, path=fn)
+        with self.fs.open(fn, "wb") as f:
             serialized = cloudpickle.dumps(value)
             f.write(serialized)
 
@@ -48,6 +59,7 @@ class TestCachedFlowRunner:
         # Assert
         assert get_lock() == expected
 
+    @pytest.mark.local
     def test_writing_to_cache_produces_hashed_filename(self):
         # Arrange
         with Flow("test") as flow:
@@ -57,12 +69,13 @@ class TestCachedFlowRunner:
         flow.run(runner_cls=self.runner_cls)
 
         # Assert
-        result = self.fs.glob("**/*")
+        result = self._ls()
         expected = [
-            "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl",
+            f"{self.root}caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl",
         ]
         assert result == expected
 
+    @pytest.mark.local
     def test_different_parameters_dont_collide(self):
         # Arrange
         with Flow("test") as flow:
@@ -73,10 +86,10 @@ class TestCachedFlowRunner:
         flow.run(runner_cls=self.runner_cls)
 
         # Assert
-        result = self.fs.glob("**/*")
+        result = self._ls()
         expected = [
-            "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl",
-            "/caching_flow_runner.test_utils.tasks.get/45ba0c8bb03803bcb166da81070e775f.pkl",
+            f"{self.root}caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl",
+            f"{self.root}caching_flow_runner.test_utils.tasks.get/45ba0c8bb03803bcb166da81070e775f.pkl",
         ]
         assert result == expected
 
@@ -84,10 +97,10 @@ class TestCachedFlowRunner:
         # Arrange - pre cache data
         self.lock_store.save_multiple(data=task_lock_instance.copy())
         self._serialize_to_cache(
-            "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
+            "caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
         )
         self._serialize_to_cache(
-            "/caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl", 2
+            "caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl", 2
         )
 
         # Act
@@ -102,10 +115,10 @@ class TestCachedFlowRunner:
         # Arrange
         self.lock_store.save_multiple(data=task_lock_instance.copy())
         self._serialize_to_cache(
-            "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
+            "caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
         )
         self._serialize_to_cache(
-            "/caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl", 2
+            "caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl", 2
         )
 
         # Act
@@ -124,7 +137,6 @@ class TestCachedFlowRunner:
     def test_mapping_task(self):
         raise NotImplementedError
 
-    # @mock.patch("caching_flow_runner.test_utils.memory_result.MemoryResult.read")
     def test_looping_task(self):
         # Arrange
         with Flow("loop_flow") as flow:
@@ -135,7 +147,6 @@ class TestCachedFlowRunner:
         flow.run(n=3, runner_cls=self.runner_cls)
 
         # Act
-        # with mock.patch(""):
 
         flow.logger.info("\n\n")
 
@@ -154,10 +165,12 @@ class TestCachedFlowRunner:
                 continue
             set_lock(key, value)
         self._serialize_to_cache(
-            "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
+            f"{self.root}caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl",
+            1,
         )
         self._serialize_to_cache(
-            "/caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl", 2
+            f"{self.root}caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl",
+            2,
         )
 
         # Act

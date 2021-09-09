@@ -1,15 +1,12 @@
-from functools import lru_cache
+import os
+import pathlib
 from typing import Any
 
-import fsspec
 import prefect
 from prefect.engine.result import Result
 from prefect.engine.serializers import Serializer
 
-
-@lru_cache(1)
-def get_fs():
-    return fsspec.filesystem("memory")
+from caching_flow_runner.lock_storage import get_fs
 
 
 class MemoryResult(Result):
@@ -20,15 +17,22 @@ class MemoryResult(Result):
         serializer: Serializer = None,
     ):
         super().__init__(value=value, location=location, serializer=serializer)
-        self.fs = get_fs()
+        self.fs, self.root = get_fs(os.environ.get("FS_URL", "memory:///"))
         self.logger = prefect.context["logger"]
+
+    def _check_parent(self, path):
+        """Ensure parent directory exists before we try and write to it"""
+        parent = str(pathlib.Path(path).parent)
+
+        if not self.fs.exists(parent):
+            self.fs.mkdir(parent)
 
     def read(self, location: str) -> "Result":
         self.logger.info(f"reading from {location=}")
         new = self.copy()
         new.location = location
 
-        with self.fs.open(location, "rb") as f:
+        with self.fs.open(f"{self.root}{location}", "rb") as f:
             serialized = f.read()
         new.value = self.serializer.deserialize(serialized)
         self.logger.info(f"Got value {new.value=}")
@@ -41,7 +45,10 @@ class MemoryResult(Result):
         value = self.serializer.serialize(new.value)
         self.logger.info(f"Writing to cache location {new.location=} {new.value}")
 
-        with self.fs.open(new.location, "wb") as f:
+        fn = f"{self.root}{new.location}"
+        self._check_parent(fn)
+
+        with self.fs.open(fn, "wb") as f:
             f.write(value)
 
         return new
@@ -49,7 +56,7 @@ class MemoryResult(Result):
     def exists(self, location: str, **kwargs: Any) -> bool:
         if "task_hash_name" not in kwargs:
             return False
-        path = location.format(**kwargs)
+        path = f"{self.root}{location.format(**kwargs)}"
         exists = self.fs.exists(path)
         self.logger.info(f"Checking exists {path=} {exists=}")
         return exists
