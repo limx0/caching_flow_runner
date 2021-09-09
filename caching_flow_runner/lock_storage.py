@@ -5,6 +5,26 @@ import fsspec
 from fsspec.utils import infer_storage_options
 
 
+LOCK = {}
+
+
+def set_lock(key, value):
+    global LOCK
+    LOCK[key] = value
+
+
+def get_lock(key=None):
+    global LOCK
+    if key is None:
+        return LOCK.copy()
+    return LOCK.get(key, {})
+
+
+def clear_lock():
+    global LOCK
+    LOCK = {}
+
+
 class LockStore:
     def __init__(self, url_path):
         self.url_path = url_path

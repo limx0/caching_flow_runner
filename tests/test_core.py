@@ -9,7 +9,8 @@ from prefect.engine.state import Success
 
 from caching_flow_runner.flow_runner import CachedFlowRunner
 from caching_flow_runner.lock_storage import LockStore
-from caching_flow_runner.task_runner import clear_lock
+from caching_flow_runner.lock_storage import clear_lock
+from caching_flow_runner.lock_storage import set_lock
 from caching_flow_runner.task_runner import get_lock
 from caching_flow_runner.test_utils.locks import task_lock_instance
 from caching_flow_runner.test_utils.memory_result import get_fs
@@ -141,3 +142,30 @@ class TestCachedFlowRunner:
         flow.run(n=3, runner_cls=self.runner_cls)
 
         # Assert
+
+    # def test_flow_runner_no_cache(self):
+    #     # Act
+    #     self.flow.run(p=1, runner_cls=self.runner_cls)
+
+    def test_flow_runner_cached(self):
+        # Arrange
+        for key, value in task_lock_instance.items():
+            if key.endswith("multiply"):
+                continue
+            set_lock(key, value)
+        self._serialize_to_cache(
+            "/caching_flow_runner.test_utils.tasks.get/2c671b46cc1b6b790da36e361ccaecf8.pkl", 1
+        )
+        self._serialize_to_cache(
+            "/caching_flow_runner.test_utils.tasks.inc/45e8aaaf26a60b0a847fb7331a0e02aa.pkl", 2
+        )
+
+        # Act
+        runner = self.runner_cls(flow=self.flow)
+        flow = runner.optimise_flow(flow=runner.flow, parameters={"p": 1})
+
+        # Assert
+        task_names = {t.name for t in flow.tasks}
+        assert task_names == {"multiply", "inc"}
+        edges = {(edge.upstream_task.name, edge.downstream_task.name) for edge in flow.edges}
+        assert edges == {("inc", "multiply")}
