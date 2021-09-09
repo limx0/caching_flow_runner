@@ -1,8 +1,8 @@
-import hashlib
 import inspect
 from typing import Any, Dict
 
 import prefect
+from dask.base import tokenize
 from prefect import Parameter
 from prefect import Task
 from prefect.engine import TaskRunner
@@ -39,10 +39,19 @@ def task_qualified_name(task: Task):
     return f"{task.__module__}.{task.name}"
 
 
+def task_hashed_filename(**kwargs) -> str:
+    task_name = kwargs["task_hash_name"]
+    lock = get_lock(key=task_name)
+    key = tokenize(**{k: v.value for k, v in lock["raw_inputs"].items()})
+    return f"/{task_name}/{key}.pkl"
+
+
 def _hash_result(result: Any, serializer: Serializer) -> Dict:
     serialized = serializer.serialize(result)
-    hash = hashlib.md5(serialized).hexdigest()  # noqa: S303
-    return {"md5": hash, "size": len(serialized)}
+    hash = tokenize(result)
+    # hash = hashlib.md5(serialized).hexdigest()  # noqa: S303
+
+    return {"hash": hash, "size": len(serialized)}
 
 
 def _compare_input_hashes(inputs: Dict, lock: Dict):
@@ -80,7 +89,7 @@ class CachedTaskRunner(TaskRunner):
 
     def _hash_inputs(self):
         lock = get_lock(self.task_full_name)
-        raw_inputs = lock.pop("raw_inputs")
+        raw_inputs = lock["raw_inputs"]
         return {
             key: _hash_result(input.value, serializer=input.serializer)
             for key, input in raw_inputs.items()
@@ -109,20 +118,23 @@ class CachedTaskRunner(TaskRunner):
     #     return state
 
     def _on_state_change(self, _, old_state: State, new_state: State) -> State:
-        self.logger.info(f"{old_state=} {new_state=}")
+        self.logger.info(f"on_state_change {old_state=} {new_state=}")
         if self._should_track():
             if isinstance(new_state, Success):
                 return self._on_success(new_state=new_state)
             elif isinstance(new_state, Looped):
-                self.logger.info(f"Setting task_loop_message={new_state.message}")
-                self.context.update(task_loop_message=new_state.message)
+                self.logger.info("Looping task, setting task_hash_name to include loop message")
+                prefect.context.update(task_hash_name=self._loop_task_name(new_state.message))
+                self.logger.info(
+                    f"{prefect.context.update(task_hash_name=self._loop_task_name(new_state.message))=}"
+                )
 
         return new_state
 
-    def _persist_loop_result(self, state: Looped, result: Any):
-        with prefect.context(task_hash_name=f"{self.task_full_name}-{state.message}"):
-            self.logger.info(f"Writing loop result {result}")
-            self.result.write(result, **prefect.context)
+    # def _persist_loop_result(self, state: Looped, result: Any):
+    #     with prefect.context(task_hash_name=f"{self.task_full_name}-{state.message}"):
+    #         self.logger.info(f"Writing loop result {result}")
+    #         self.result.write(result, **prefect.context)
 
     def get_task_inputs(self, *args, **kwargs) -> Dict[str, Result]:
         task_inputs = super().get_task_inputs(*args, **kwargs)
@@ -148,7 +160,7 @@ class CachedTaskRunner(TaskRunner):
             with prefect.context(task_hash_name=fn):
                 return super().check_target(state=state, inputs=inputs)
 
-        with prefect.context(task_hash_name=self.task_full_name):
+        with prefect.context(task_hash_name=self.task_full_name, task_loop_count=None):
             return super().check_target(state=state, inputs=inputs)
 
     def check_task_is_cached(self, state: State, inputs: Dict[str, Result]) -> State:
@@ -161,6 +173,10 @@ class CachedTaskRunner(TaskRunner):
                 return state
 
         return new_state
+
+    # def get_task_run_state(self, state: State, inputs: Dict[str, Result]) -> State:
+    #     with prefect.context(task_hash_name=self._loop_task_name(self.context['task_loop_message'])):
+    #         return super().get_task_run_state(state=state, inputs=inputs)
 
     @tail_recursive
     def run(self, *args, **kwargs) -> State:

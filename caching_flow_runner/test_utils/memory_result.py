@@ -12,6 +12,10 @@ def get_fs():
     return fsspec.filesystem("memory")
 
 
+def task_filename(*args, **kwargs) -> str:
+    pass
+
+
 class MemoryResult(Result):
     def __init__(
         self,
