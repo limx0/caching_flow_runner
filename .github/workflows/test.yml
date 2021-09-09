@@ -30,8 +30,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       # Create data directory
-      - name: Install build dependencies
-        run: mkdir $FS_URL
+      - name: Create data directory
+        run: mkdir /home/runner/work/data
 
       # Install build dependencies
       - name: Install build dependencies
