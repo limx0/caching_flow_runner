@@ -9,7 +9,7 @@ from prefect.engine.serializers import Serializer
 
 @lru_cache(1)
 def get_fs():
-    return fsspec.filesystem("memory")
+    return fsspec.filesystem("file")
 
 
 class MemoryResult(Result):
