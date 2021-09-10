@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, AnyStr, Dict, Optional, Tuple
 
 import prefect
 from prefect import Flow
@@ -15,10 +15,27 @@ from caching_flow_runner.task_runner import task_qualified_name
 
 
 class CachedFlowRunner(FlowRunner):
-    def __init__(self, *args, lock_store: LockStore, optimise_flow=False, **kwargs):
+    def __init__(
+        self,
+        *args,
+        lock_store: LockStore,
+        optimise_flow=False,
+        ignore_kwargs: Optional[Dict[AnyStr, Tuple]] = None,
+        **kwargs
+    ):
+        """
+        A FlowRunner subclass that caches task inputs/outputs
+        :param lock_store: A `LockStore` instance to persist lock results
+        :param optimise_flow (bool): Whether to optimise this flow by removing tasks that are cached
+        :param ignore_kwargs: A dict of {task_name: tuple(kwarg names)}
+        """
+        """
+
+        """
         super().__init__(*args, task_runner_cls=CachedTaskRunner, **kwargs)
         self.lock_store = lock_store
         self._optimise_flow = optimise_flow
+        self.ignore_kwargs = ignore_kwargs
 
     @staticmethod
     def optimise_flow(flow: Flow, parameters: Dict[str, Any] = None):  # noqa: C901
@@ -93,7 +110,8 @@ class CachedFlowRunner(FlowRunner):
             self.flow = self.optimise_flow(
                 flow=self.flow.copy(), parameters=kwargs.get("parameters")
             )
-        return super().run(*args, **kwargs)
+        with prefect.context(CachedTaskRunner_ignore_kwargs=self.ignore_kwargs):
+            return super().run(*args, **kwargs)
 
     def set_locks_for_flow_run(self):
         for task in self.flow.sorted_tasks():

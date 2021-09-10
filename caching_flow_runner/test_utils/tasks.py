@@ -35,6 +35,7 @@ def looping_task(n):
 
     if "task_loop_result" not in prefect.context:
         logger.info("Raising initial LOOP signal")
+        prefect.context.update(looper_something=1)
         raise LOOP(message="Looper-1", result=None)
 
     new_value = inc.run(value)
@@ -43,6 +44,7 @@ def looping_task(n):
         return value
 
     logger.info(f"Raising LOOP signal {value=}, {new_value=}")
+    prefect.context.update(looper_something=new_value)
     raise LOOP(message=f"Looper-{new_value}", result=new_value)
 
 

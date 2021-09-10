@@ -72,6 +72,7 @@ class LockStore:
     def load(self, key) -> Dict:
         try:
             with self.fs.open(f"{self.root}/{key}.json", "rb") as f:
-                return json.loads(f.read())
-        except FileNotFoundError:
+                data = f.read()
+                return json.loads(data)
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
             return {}
