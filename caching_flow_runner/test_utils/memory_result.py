@@ -6,7 +6,7 @@ import prefect
 from prefect.engine.result import Result
 from prefect.engine.serializers import Serializer
 
-from caching_flow_runner.lock_storage import get_fs
+from caching_flow_runner.util import get_fs
 
 
 class MemoryResult(Result):

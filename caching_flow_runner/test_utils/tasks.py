@@ -4,19 +4,18 @@ from prefect import Parameter
 from prefect import task
 from prefect.engine.signals import LOOP
 
-from caching_flow_runner.task_runner import task_hashed_filename
 from caching_flow_runner.test_utils.memory_result import MemoryResult
 
 
 memory_result = MemoryResult()
 
 
-@task(result=memory_result, checkpoint=True, target=task_hashed_filename)
+@task(result=memory_result, checkpoint=True)
 def get(a):
     return a
 
 
-@task(result=memory_result, checkpoint=True, target=task_hashed_filename)
+@task(result=memory_result, checkpoint=True)
 def inc(b):
     return b + 1
 
@@ -26,7 +25,7 @@ def multiply(c):
     return c * 2
 
 
-@task(result=memory_result, checkpoint=True, target=task_hashed_filename)
+@task(result=memory_result, checkpoint=True)
 def looping_task(n):
     logger = prefect.context["logger"]
     logger.info("\n")

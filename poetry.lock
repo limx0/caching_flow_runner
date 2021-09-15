@@ -10,7 +10,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 name = "attrs"
 version = "21.2.0"
 description = "Classes Without Boilerplate"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
@@ -271,6 +271,22 @@ python-versions = ">=3.4"
 [package.extras]
 fast = ["fastnumbers (>=2.0.0)"]
 icu = ["PyICU (>=1.0.0)"]
+
+[[package]]
+name = "openlineage-python"
+version = "0.2.2"
+description = "OpenLineage Python Client"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+attrs = ">=19.3.0"
+requests = ">=2.20.0"
+
+[package.extras]
+dev = ["flake8", "mock", "pytest", "pytest-cov", "requests"]
+tests = ["pytest", "pytest-cov", "mock", "flake8", "requests"]
 
 [[package]]
 name = "packaging"
@@ -640,7 +656,7 @@ heapdict = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "6eb8c78944719d1424d071391f79527ce25da34020e1041609dc4a381aa4d988"
+content-hash = "e7964c468301d257c339f2e46b7742aef849ff9308647a547e8db99cb4db4a8c"
 
 [metadata.files]
 atomicwrites = [
@@ -812,6 +828,10 @@ mypy-extensions = [
 natsort = [
     {file = "natsort-7.1.1-py3-none-any.whl", hash = "sha256:d0f4fc06ca163fa4a5ef638d9bf111c67f65eedcc7920f98dec08e489045b67e"},
     {file = "natsort-7.1.1.tar.gz", hash = "sha256:00c603a42365830c4722a2eb7663a25919551217ec09a243d3399fa8dd4ac403"},
+]
+openlineage-python = [
+    {file = "openlineage-python-0.2.2.tar.gz", hash = "sha256:53fe9ebfb2e69ff48acaab8c2e2308711a1ba417d36a3fa86341496da33092af"},
+    {file = "openlineage_python-0.2.2-py3-none-any.whl", hash = "sha256:1c3c0d2ec0955b20b9aba75a3e91c2e1a35fcb996b5b1767eff55110048b6845"},
 ]
 packaging = [
     {file = "packaging-21.0-py3-none-any.whl", hash = "sha256:c86254f9220d55e31cc94d69bade760f0847da8000def4dfe1c6b872fd14ff14"},
