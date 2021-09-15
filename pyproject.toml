@@ -8,6 +8,7 @@ authors = ["Your Name <you@example.com>"]
 python = "^3.9"
 prefect = "^0.15.4"
 openlineage-python = "^0.2.2"
+marquez-python = "^0.18.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
