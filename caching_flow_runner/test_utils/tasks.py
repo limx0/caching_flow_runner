@@ -4,6 +4,7 @@ from prefect import Flow
 from prefect import Parameter
 from prefect import task
 
+from caching_flow_runner.test_utils import RESOURCES
 from caching_flow_runner.test_utils.memory_result import MemoryResult
 
 
@@ -11,7 +12,8 @@ memory_result = MemoryResult()
 
 
 @task(result=memory_result, checkpoint=True)
-def get(filename):
+def get(n):
+    filename = f"{RESOURCES}/{n}.json"
     return json.loads(open(filename).read())
 
 

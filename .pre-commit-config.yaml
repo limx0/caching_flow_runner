@@ -77,27 +77,6 @@ repos:
             --max-complexity=10,
             --max-line-length=150,
             --statistics,
+            --min-python-version=3.7,
             --ignore=C101 E203 E252 E402 D100 D101 D102 S101 S403 W503,
-        ]
-      - id: flake8
-        name: flake8 (cython)
-        additional_dependencies:
-          - flake8-bandit
-          - flake8-bugbear
-          - flake8-coding
-          - flake8-comprehensions
-          - flake8-debugger
-          - flake8-deprecated
-          - flake8-docstrings
-          - flake8-pep3101
-          - flake8-string-format
-          - flake8-rst-docstrings
-          - flake8-typing-imports
-          - pep8-naming
-        types: [cython]
-        args: [
-            --max-complexity=10,
-            --max-line-length=150,
-            --statistics,
-            --ignore=C101 D100 E225 E226 E227 E252 E402 E999 W503,
         ]

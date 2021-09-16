@@ -1,17 +1,16 @@
 from prefect.engine import FlowRunner
 from prefect.engine.state import State
 
-from caching_flow_runner.task_runner import CachedTaskRunner
+from caching_flow_runner.adapter import OpenLineageAdapter
+from caching_flow_runner.task_runner import OpenLineageTaskRunner
 
 
-class CachedFlowRunner(FlowRunner):
+class OpenLineageFlowRunner(FlowRunner):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, task_runner_cls=CachedTaskRunner, **kwargs)
+        super().__init__(*args, task_runner_cls=OpenLineageTaskRunner, **kwargs)
+        self._adapter = OpenLineageAdapter()
 
     def run(self, *args, **kwargs):
-        """
-        Because parameters are not injected until `run`, we need to overload this method to perform optimisation
-        """
         return super().run(*args, **kwargs)
 
     def get_flow_run_state(self, *args, **kwargs) -> State:
