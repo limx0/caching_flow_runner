@@ -2,6 +2,8 @@ import datetime
 from typing import Dict
 
 import prefect
+from openlineage.client.run import InputDataset
+from openlineage.client.run import OutputDataset
 from prefect import Parameter
 from prefect.engine import TaskRunner
 from prefect.engine.result import Result
@@ -23,7 +25,7 @@ class OpenLineageTaskRunner(TaskRunner):
         self.state_handlers.append(self.on_state_changed)
 
     def make_timestamp(self):
-        return datetime.datetime.utcnow().isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()[:-6] + "Z"
 
     def on_state_changed(self, _, old_state: State, new_state: State):
         if isinstance(old_state, Running) and isinstance(new_state, Success):
@@ -31,9 +33,13 @@ class OpenLineageTaskRunner(TaskRunner):
         elif isinstance(old_state, (Pending, Running)) and isinstance(new_state, Failed):
             self._on_failure(state=new_state)
 
-    def unpack_inputs(self, inputs: Dict[str, Result]):
-        """Unpack values from Result"""
-        return {k: v.value for k, v in inputs.items()}
+    def _parse_inputs(self, inputs: Dict[str, Result]):
+        """Convert prefect inputs to input Datasets for OpenLineage"""
+        return [InputDataset({k: v.value for k, v in inputs.items()})]
+
+    def _parse_output(self, result):
+        """Convert task result to output Dataset for OpenLineage"""
+        return [OutputDataset(namespace="", name=self.task_full_name)]
 
     def _task_description(self):
         if isinstance(self.task, Parameter):
@@ -43,10 +49,6 @@ class OpenLineageTaskRunner(TaskRunner):
             return self.task.__doc__
 
     def _on_start(self, inputs: Dict[str, Result]):
-        if isinstance(self.task, Parameter):
-            # TODO - what to do with Parameters?
-            return
-
         context = prefect.context
         run_id = self._client.start_task(
             run_id=context.task_run_id,
@@ -55,7 +57,7 @@ class OpenLineageTaskRunner(TaskRunner):
             event_time=self.make_timestamp(),
             parent_run_id=context.flow_run_id,
             code_location=None,
-            inputs=self.unpack_inputs(inputs),
+            inputs=self._parse_inputs(inputs),
             outputs=None,
         )
         self.logger.info(f"Marquez run CREATED run_id: {run_id}")

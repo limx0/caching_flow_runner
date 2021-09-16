@@ -3,7 +3,7 @@ from functools import partial
 from prefect.engine import FlowRunner
 from prefect.engine.state import State
 
-from caching_flow_runner.adapter import MarquezAdapter
+from caching_flow_runner.adapter import OpenLineageAdapter
 from caching_flow_runner.task_runner import OpenLineageTaskRunner
 
 
@@ -36,14 +36,13 @@ from caching_flow_runner.task_runner import OpenLineageTaskRunner
 
 class OpenLineageFlowRunner(FlowRunner):
     def __init__(self, *args, **kwargs):
-        self._client = MarquezAdapter()
+        self._client = OpenLineageAdapter()
         task_runner_cls = partial(OpenLineageTaskRunner, client=self._client)
         super().__init__(*args, task_runner_cls=task_runner_cls, **kwargs)
         self.ping()
 
     def ping(self) -> bool:
-        resp = self._client.client.list_namespaces()
-        return bool(resp)
+        return self._client.ping()
 
     def run(self, *args, **kwargs):
         return super().run(*args, **kwargs)
