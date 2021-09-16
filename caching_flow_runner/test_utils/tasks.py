@@ -4,13 +4,11 @@ from prefect import Flow
 from prefect import Parameter
 from prefect import task
 
-# from caching_flow_runner.flow_runner import OpenLineageStateHandler
 from caching_flow_runner.test_utils import RESOURCES
 from caching_flow_runner.test_utils.memory_result import MemoryResult
 
 
 memory_result = MemoryResult()
-# state_handler = OpenLineageStateHandler()
 
 
 @task(result=memory_result, checkpoint=True, state_handlers=[])
