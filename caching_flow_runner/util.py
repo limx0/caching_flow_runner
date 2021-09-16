@@ -13,7 +13,7 @@ from prefect.engine.serializers import Serializer
 
 
 @lru_cache()
-def get_fs(url, check_exists=True) -> Tuple[AbstractFileSystem, str]:
+def get_fs(url) -> Tuple[AbstractFileSystem, str]:
     options = infer_storage_options(urlpath=url)
     fs = fsspec.filesystem(options["protocol"])
     root = url.replace(options["protocol"] + "://", "")
@@ -53,15 +53,3 @@ class SourceSerializer(Serializer):
 
     def deserialize(self, value: bytes) -> Any:
         return value.decode()
-
-
-# def task_hashed_filename(**kwargs) -> str:
-#     # TODO Add a fs prefix - don't just use /
-#     task_name = kwargs["task_hash_name"]
-#     lock = get_lock(key=task_name)
-#     key = tokenize(**{k: v.value for k, v in lock["raw_inputs"].items()})
-#     folder = ""
-#     if kwargs.get("task_loop_state") is not None:
-#         folder = f"{kwargs['task_loop_state']}/"
-#     fn = f"{task_name}/{folder}{key}.pkl"
-#     return fn

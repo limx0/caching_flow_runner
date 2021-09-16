@@ -36,10 +36,7 @@ class TestCachedFlowRunner:
     def _setup_open_lineage(self):
         # Can't seem to delete from open lineage, so create a fresh namespace for each test run
         os.environ["OPENLINEAGE_NAMESPACE"] = str(time.time())
-        os.environ["MARQUEZ_URL"] = "localhost:3000"
+        os.environ["MARQUEZ_URL"] = "http://localhost:3000"
 
     def test_flow_run(self):
         self.flow.run(p=1, runner_cls=self.runner_cls)
-
-    def test_dataset(self):
-        pass
