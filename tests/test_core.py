@@ -21,7 +21,7 @@ class TestCachedFlowRunner:
         self.fs, self.root = get_fs(self.fs_url)
         self._clear_fs()
         self.runner_cls = OpenLineageFlowRunner
-        self.client = MarquezClient(url="http://localhost:5000")
+        self.client = MarquezClient("http://localhost:5000")
 
     def _clear_fs(self):
         try:
@@ -36,7 +36,7 @@ class TestCachedFlowRunner:
     def _setup_open_lineage(self):
         # Can't seem to delete from open lineage, so create a fresh namespace for each test run
         os.environ["OPENLINEAGE_NAMESPACE"] = str(time.time())
-        os.environ["MARQUEZ_URL"] = "http://localhost:3000"
+        os.environ["MARQUEZ_URL"] = "http://localhost:5000"
 
     def test_flow_run(self):
         self.flow.run(p=1, runner_cls=self.runner_cls)
